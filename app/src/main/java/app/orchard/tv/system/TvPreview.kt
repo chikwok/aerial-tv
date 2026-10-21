@@ -65,6 +65,14 @@ object TvPreview {
     /** Whether the picture is on the screen right now, which is what the backdrop needs to know. */
     val showing get() = on && !suppressed
 
+    /**
+     * Whether the input is delivering a picture at all. The box takes tens of seconds to boot, and
+     * until it does there is nothing to see; the tile says so rather than claiming a picture that
+     * is not there yet. Also how a dead port is told from a slow box: both stay false.
+     */
+    var videoAvailable by mutableStateOf(false)
+        private set
+
     /** Darkening on the top row, 0..1; [HomeBackground] reads it inside its canvas. */
     var scrimRest by mutableStateOf(SCRIM_REST)
         private set
@@ -85,7 +93,19 @@ object TvPreview {
     fun setInput(id: String?) {
         if (inputId == id) return
         inputId = id
+        // Nothing has been heard from the new input yet.
+        videoAvailable = false
         Log.d(TAG, "input ${id ?: "none"}")
+    }
+
+    /**
+     * What the view's callbacks say about the picture; see [LiveTvBackdrop]. Not named
+     * `setVideoAvailable`, which would clash with the property's own setter in bytecode.
+     */
+    fun reportVideo(value: Boolean) {
+        if (videoAvailable == value) return
+        videoAvailable = value
+        Log.d(TAG, "videoAvailable $value")
     }
 
     /**
@@ -160,19 +180,23 @@ fun LiveTvBackdrop(modifier: Modifier = Modifier) {
                 setCallback(object : TvView.TvInputCallback() {
                     override fun onVideoAvailable(id: String) {
                         Log.d(TAG, "onVideoAvailable $id")
+                        TvPreview.reportVideo(true)
                     }
 
                     override fun onVideoUnavailable(id: String, reason: Int) {
                         // 2 is WEAK_SIGNAL: nothing on that port yet, e.g. the box is still booting.
                         Log.d(TAG, "onVideoUnavailable $id reason=$reason")
+                        TvPreview.reportVideo(false)
                     }
 
                     override fun onConnectionFailed(id: String) {
                         Log.d(TAG, "onConnectionFailed $id")
+                        TvPreview.reportVideo(false)
                     }
 
                     override fun onDisconnected(id: String) {
                         Log.d(TAG, "onDisconnected $id")
+                        TvPreview.reportVideo(false)
                     }
                 })
             }
@@ -198,6 +222,7 @@ fun LiveTvBackdrop(modifier: Modifier = Modifier) {
         onRelease = { view ->
             view.tag = null
             view.reset()
+            TvPreview.reportVideo(false)
         },
     )
 }

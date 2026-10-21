@@ -90,6 +90,7 @@ import app.orchard.tv.ui.components.smoothMask
 import app.orchard.tv.ui.components.smoothRectPath
 import app.orchard.tv.ui.theme.LocalReducedMotion
 import app.orchard.tv.ui.theme.Motion
+import app.orchard.tv.ui.theme.Palette
 import app.orchard.tv.ui.theme.Type
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -127,6 +128,8 @@ fun AppTile(
     onFocused: () -> Unit,
     onClick: (Rect?) -> Unit,
     onLongPress: (Rect?) -> Unit,
+    /** The input behind Home is up and delivering a picture; see [AppEntry.live]. */
+    live: Boolean = false,
     modifier: Modifier = Modifier,
     /** Last tile of its row: Right stops here instead of finding the status pill above (#211). */
     rowEnd: Boolean = false,
@@ -424,6 +427,36 @@ fun AppTile(
                     if (lift > 0.01f) drawImage(rim, dstSize = full, alpha = 0.08f * lift)
                 }
             })
+            if (lift > 0.01f) {
+                // Light from above: a soft sheen across the top, brighter where the tile leans toward it.
+                val glintX = size.width * (0.3f + leanY.value / 7f * 0.25f)
+                drawRect(
+                    Brush.radialGradient(
+                        0f to Color.White.copy(alpha = 0.28f * lift),
+                        1f to Color.Transparent,
+                        center = Offset(glintX, -size.height * 0.25f),
+                        radius = size.width * 0.75f,
+                    ),
+                    blendMode = BlendMode.Screen,
+                )
+            }
+            // A hairline on the rim, as on tvOS icons, so dark artwork still reads against black.
+            drawRoundRect(
+                Color.White.copy(alpha = 0.07f + 0.08f * lift),
+                cornerRadius = CornerRadius(Corner.toPx()),
+                style = Stroke(width = 1.dp.toPx()),
+            )
+            // A dot, the way a TV marks what is on the air now: the box is up and its picture
+            // is playing behind Home. On the tile, so it travels with the tile's lift and lean
+            // rather than sitting still beside the name.
+            if (live) {
+                val r = 4.dp.toPx()
+                val at = Offset(size.width - r * 3.2f, r * 3.2f)
+                // A dark ring under it, so the dot still reads over a bright picture.
+                drawCircle(Color.Black.copy(alpha = 0.5f), radius = r * 1.6f, center = at)
+                drawCircle(Palette.Red, radius = r, center = at)
+            }
+        }
         }
 
         if (ring > 0.01f && ringIn > 0.01f) {

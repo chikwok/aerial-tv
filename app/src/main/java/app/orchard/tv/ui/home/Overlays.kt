@@ -218,6 +218,12 @@ fun AppMenu(
                             MenuRow(Glyph.Pencil, stringResource(R.string.menu_rename_folder), { page = MenuPage.Rename }, trailing = "›")
                             MenuRow(Glyph.Folder, stringResource(R.string.menu_ungroup), { onUngroup(folder.id) })
                         }
+                        shownApp.live -> {
+                            // The input playing behind Home: it is not pinned and cannot be hidden
+                            // or moved, because it sits where Home starts. The way off Home is to
+                            // stop playing it there, which is the setting that put it here.
+                            MenuRow(Glyph.EyeSlash, stringResource(R.string.menu_live_off), { onUnpin(shownApp.key) }, focusRequester = first)
+                        }
                         else -> {
                             if (inFolder) {
                                 MenuRow(Glyph.Folder, stringResource(R.string.menu_out_of_folder), { onOutOfFolder(shownApp.key) }, focusRequester = first)

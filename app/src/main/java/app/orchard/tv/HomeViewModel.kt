@@ -21,6 +21,7 @@ import app.orchard.tv.apps.LayoutStore
 import app.orchard.tv.apps.TileArt
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.apps.folderEntry
+import app.orchard.tv.apps.liveTvEntry
 import app.orchard.tv.apps.sourceEntry
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.Brightness
@@ -103,6 +104,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         offerSetupOnce()
         // An input's device or name, chosen from its tile's menu or the phone page.
         viewModelScope.launch { snapshotFlow { SourceLooks.all }.drop(1).collect { if (loaded) arrange() } }
+        // Which input plays behind Home puts a tile on the grid, so the grid follows that setting.
+        viewModelScope.launch { snapshotFlow { AerialSettings.liveTvSource }.drop(1).collect { arrange() } }
     }
 
     /**
@@ -157,15 +160,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun arrange() {
         // Pinned TV inputs share the grid, order and hiding with the apps.
-        val pinned = sources.filter { it.id in AerialSettings.pinnedSources }.map { sourceEntry(context, it) }
+        val liveId = AerialSettings.liveTvSource
+        // The input playing behind Home is on the grid as the first tile, and stays there: Home is
+        // what the owner presses to watch it, so the first tile has to be the way in. It is not
+        // the pinned tile for the same input, and pinning that too would put it on twice.
+        val live = sources.firstOrNull { it.id == liveId }
+            ?.let { liveTvEntry(it, context.getString(R.string.tile_watch_tv)) }
+        val pinned = sources.filter { it.id in AerialSettings.pinnedSources && it.id != liveId }.map { sourceEntry(context, it) }
         AppCatalog.pinnedSources = pinned
-        val arrangement = store.arrange(all + pinned) { folder, inside ->
+        val arrangement = store.arrange(all + pinned + listOfNotNull(live)) { folder, inside ->
             val shown = inside.take(9).map { it.art }
             val art = folderArt[folder.id]?.takeIf { (made, _) -> made.size == shown.size && made.indices.all { made[it] === shown[it] } }?.second
                 ?: TileArtFactory.forFolder(shown).also { folderArt[folder.id] = shown to it }
             folderEntry(folder, art)
         }
-        apps = arrangement.home
+        apps = arrangement.home.sortedWith(compareBy { it.key != live?.key })
         folderApps = arrangement.folders
         hiddenApps = arrangement.hidden
     }
