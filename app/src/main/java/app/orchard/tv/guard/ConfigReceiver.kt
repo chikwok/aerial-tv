@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
  *   ... --ez update_test true       ("Download and Install" takes files/update-test.apk instead,
  *                                   until Aerial restarts; for trying an update before a release)
  *   ... --ez tv_preview true        (show the HDMI picture behind the home screen; see TvPreview)
+ *   ... --es tv_preview_input <id>  (which input that is, e.g. .../HW6; empty turns it off)
  *   ... --ei tv_preview_dim 55      (darken it by 55% in the grid; the top row keeps its share)
  * The manifest requires the sender to hold WRITE_SECURE_SETTINGS, which the ADB shell has and
  * ordinary apps cannot get, so no other app on the TV can flip these.
@@ -73,10 +74,17 @@ class ConfigReceiver : BroadcastReceiver() {
         if (intent.hasExtra("tv_preview")) {
             // Same setting the Control Center writes, so a picture switched on from a computer is
             // still the one the owner sees ticked there, and survives a restart.
+            AerialSettings.init(context)
             val on = intent.getBooleanExtra("tv_preview", false)
             AerialSettings.chooseLiveTvSource(
                 if (on) AerialSettings.liveTvSource ?: TvPreview.firstPassthrough(context)?.id else null,
             )
+        }
+        if (intent.hasExtra("tv_preview_input")) {
+            // A TV with several HDMI ports needs to say which one, and a port with nothing on it
+            // is the way to try out what happens while a box is still booting.
+            AerialSettings.init(context)
+            AerialSettings.chooseLiveTvSource(intent.getStringExtra("tv_preview_input")?.takeIf { it.isNotEmpty() })
         }
         if (intent.hasExtra("tv_preview_dim")) TvPreview.setDim(intent.getIntExtra("tv_preview_dim", 55))
         if (intent.hasExtra("keep_adb")) GuardSetup.setKeepAdb(context, intent.getBooleanExtra("keep_adb", false))
