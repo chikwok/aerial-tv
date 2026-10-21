@@ -62,6 +62,7 @@ import app.orchard.tv.system.MissingClipboard
 import app.orchard.tv.system.Sounds
 import app.orchard.tv.system.SystemProbe
 import app.orchard.tv.system.LaunchFallback
+import app.orchard.tv.system.TvPreview
 import app.orchard.tv.system.settingsLaunchIntent
 import app.orchard.tv.update.Updates
 import app.orchard.tv.weather.Weather
@@ -513,6 +514,9 @@ class MainActivity : ComponentActivity() {
             DiagLog.i("the page just opened closed at once; opening ${it.component ?: it.action}")
             open(it)
         }
+        // The surface under the live picture is gone while anything else covers the screen, even
+        // though its session survives; tune again so the picture does not stay black.
+        TvPreview.retune()
     }
 
     override fun onPause() {

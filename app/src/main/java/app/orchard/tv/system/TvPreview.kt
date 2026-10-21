@@ -61,10 +61,32 @@ object TvPreview {
         Log.d(TAG, "set on=$on inputId=$inputId")
     }
 
+    /**
+     * Raised whenever the picture has to be tuned again from scratch, which is what a view that
+     * lost its surface needs: without it the session stays up, `onVideoAvailable` never comes
+     * again, and the screen stays black behind the home screen.
+     */
+    var generation by mutableStateOf(0)
+        private set
+
     /** Darkening in percent, 0 = none. Meant for trying values out on a real TV, not for users. */
     fun setDim(percent: Int) {
         scrimAlpha = percent.coerceIn(0, 100) / 100f
         Log.d(TAG, "setDim $percent% -> $scrimAlpha")
+    }
+
+    /**
+     * Re-tunes the picture after the home screen came back to the front.
+     *
+     * A TvView keeps its session when something else covers the screen, but the surface under it
+     * is gone: coming back from another app it recovers on its own after a couple of seconds, yet
+     * coming back from the screensaver it never does, and only a fresh tune brings the picture
+     * back.
+     */
+    fun retune() {
+        if (!on) return
+        generation++
+        Log.d(TAG, "retune generation=$generation")
     }
 }
 
@@ -78,6 +100,8 @@ object TvPreview {
 @Composable
 fun LiveTvBackdrop(modifier: Modifier = Modifier) {
     val inputId = TvPreview.inputId ?: return
+    // Read so that a re-tune recomposes: the key below has to change for the view to tune again.
+    val generation = TvPreview.generation
     AndroidView(
         factory = { context ->
             TvView(context).apply {
@@ -109,13 +133,15 @@ fun LiveTvBackdrop(modifier: Modifier = Modifier) {
         // Keeps it out of Compose's focus search as well as the View system's.
         modifier = modifier.fillMaxSize().focusProperties { canFocus = false },
         update = { view ->
-            // Tag the view with what it is tuned to, so a change re-tunes and nothing else does.
-            if (view.tag != inputId) {
-                view.tag = inputId
+            // Tag the view with what it is tuned to, and with the generation, so that switching
+            // inputs and being re-tuned both take effect while nothing else does.
+            val key = "$inputId#$generation"
+            if (view.tag != key) {
+                view.tag = key
                 view.reset()
                 view.postDelayed({
                     // The tag is cleared on release, so a tune that arrives late does nothing.
-                    if (view.tag == inputId) {
+                    if (view.tag == key) {
                         Log.d(TAG, "tune $inputId")
                         view.tune(inputId, TvContract.buildChannelUriForPassthroughInput(inputId))
                     }
