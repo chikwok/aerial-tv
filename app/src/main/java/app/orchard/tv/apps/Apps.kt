@@ -92,7 +92,8 @@ fun folderEntry(folder: Folder, art: TileArt): AppEntry = AppEntry(
  * A Home tile for the input that plays behind Home, which is its own tile rather than the pinned
  * one for the same input, for two reasons: it can be called what the owner calls it -- "Watch TV"
  * rather than "HDMI 1", which is what he looks for -- and it comes and goes with that setting
- * rather than with pinning. Pinning the same input as well would put it on the grid twice.
+ * rather than with pinning. Pinning the same input as well is left alone: both tiles go on the
+ * grid, since pinning is his own doing.
  *
  * Tapping it switches the TV to that input, which is what "watching it" means: full screen, and
  * with sound, neither of which the silent picture behind Home can give.

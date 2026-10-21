@@ -425,38 +425,19 @@ fun AppTile(
                     }
                     // A focused tile's rim catches a little more light.
                     if (lift > 0.01f) drawImage(rim, dstSize = full, alpha = 0.08f * lift)
+                    // A green dot, the way a TV marks that a picture is on the air: the box is up
+                    // and its picture is playing behind Home. Green rather than the red a recorder
+                    // uses, because it says the picture started, not that something went wrong. On
+                    // the tile, so it travels with the tile's lift and lean, as the artwork does.
+                    if (live) {
+                        val r = 4.dp.toPx()
+                        val at = Offset(size.width - r * 3.2f, r * 3.2f)
+                        // A dark ring under it, so the dot still reads over a bright picture.
+                        drawCircle(Color.Black.copy(alpha = 0.5f), radius = r * 1.6f, center = at)
+                        drawCircle(Palette.Green, radius = r, center = at)
+                    }
                 }
             })
-            if (lift > 0.01f) {
-                // Light from above: a soft sheen across the top, brighter where the tile leans toward it.
-                val glintX = size.width * (0.3f + leanY.value / 7f * 0.25f)
-                drawRect(
-                    Brush.radialGradient(
-                        0f to Color.White.copy(alpha = 0.28f * lift),
-                        1f to Color.Transparent,
-                        center = Offset(glintX, -size.height * 0.25f),
-                        radius = size.width * 0.75f,
-                    ),
-                    blendMode = BlendMode.Screen,
-                )
-            }
-            // A hairline on the rim, as on tvOS icons, so dark artwork still reads against black.
-            drawRoundRect(
-                Color.White.copy(alpha = 0.07f + 0.08f * lift),
-                cornerRadius = CornerRadius(Corner.toPx()),
-                style = Stroke(width = 1.dp.toPx()),
-            )
-            // A dot, the way a TV marks what is on the air now: the box is up and its picture
-            // is playing behind Home. On the tile, so it travels with the tile's lift and lean
-            // rather than sitting still beside the name.
-            if (live) {
-                val r = 4.dp.toPx()
-                val at = Offset(size.width - r * 3.2f, r * 3.2f)
-                // A dark ring under it, so the dot still reads over a bright picture.
-                drawCircle(Color.Black.copy(alpha = 0.5f), radius = r * 1.6f, center = at)
-                drawCircle(Palette.Red, radius = r, center = at)
-            }
-        }
         }
 
         if (ring > 0.01f && ringIn > 0.01f) {

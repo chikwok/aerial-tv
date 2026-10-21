@@ -159,14 +159,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun arrange() {
-        // Pinned TV inputs share the grid, order and hiding with the apps.
-        val liveId = AerialSettings.liveTvSource
+        // Pinned TV inputs share the grid, order and hiding with the apps, exactly as they do
+        // without the picture behind Home: pinning is what puts them there, and nothing else.
         // The input playing behind Home is on the grid as the first tile, and stays there: Home is
-        // what the owner presses to watch it, so the first tile has to be the way in. It is not
-        // the pinned tile for the same input, and pinning that too would put it on twice.
-        val live = sources.firstOrNull { it.id == liveId }
+        // what the owner presses to watch it, so the first tile has to be the way in. Its own tile,
+        // so it can be called what he looks for; pinning the same input is his own choice, and both
+        // tiles are left on the grid when he does.
+        val live = AerialSettings.liveTvSource
+            ?.let { id -> sources.firstOrNull { it.id == id } }
             ?.let { liveTvEntry(it, context.getString(R.string.tile_watch_tv)) }
-        val pinned = sources.filter { it.id in AerialSettings.pinnedSources && it.id != liveId }.map { sourceEntry(context, it) }
+        val pinned = sources.filter { it.id in AerialSettings.pinnedSources }.map { sourceEntry(context, it) }
         AppCatalog.pinnedSources = pinned
         val arrangement = store.arrange(all + pinned + listOfNotNull(live)) { folder, inside ->
             val shown = inside.take(9).map { it.art }
@@ -265,8 +267,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         AerialSettings.setPinned(source.id, pinned)
         arrange()
         if (pinned) {
-            val key = apps.firstOrNull { it.source?.id == source.id }?.key
-            val first = apps.firstOrNull()?.key
+            // The tile playing behind Home carries the same input, but pinning is not what put it
+            // there and moving it would drag that tile out of first place.
+            val key = apps.firstOrNull { it.source?.id == source.id && !it.live }?.key
+            // In front of the apps, but behind the tile playing behind Home: that one is held at
+            // slot 0 by arrange, so the first tile it can be moved onto is the first real app.
+            val first = apps.firstOrNull { !it.live }?.key
             if (key != null && first != null && key != first) {
                 store.move(key, first)
                 arrange()
