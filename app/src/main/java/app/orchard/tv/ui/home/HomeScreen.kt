@@ -598,6 +598,17 @@ fun HomeScreen(
             drawRect(Brush.verticalGradient(0f to Color.Black, 0.5f to Color.Black.copy(alpha = 0.82f), 1f to Color.Transparent))
         }
 
+        // The picture is silent by nature; say so once, where it cannot be taken for a fault.
+        if (TvPreview.videoAvailable) {
+            LiveTvMutedNote(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 96.dp, end = metrics.margin)
+                    // Scrolls and fades with the clock: the tiles come up into that space.
+                    .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
+            )
+        }
+
         // The pill holds only the network and Control Center. The time joins it once the clock
         // above the top row has scrolled away, so the screen never shows the time twice. The small
         // clock on the right puts the time and weather just left of the pill.

@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -26,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Box
@@ -49,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.res.stringResource
@@ -116,6 +120,12 @@ fun dateText(now: LocalDateTime): String {
     return SimpleDateFormat(pattern, locale).format(Date(millis))
 }
 
+/** How long the passthrough picture takes to come up once the input says it has one. */
+private const val FADE_IN_MS = 600
+
+/** How long the note that says the picture is silent stays on the screen. */
+private const val MUTED_NOTE_MS = 6_000L
+
 /**
  * The home background, in two states as on tvOS 26. Focus in the top row: the picture itself, with
  * a plate of Liquid Glass under the row ([plate], in px at scroll 0). Focus down in the grid: the
@@ -164,7 +174,7 @@ fun HomeBackground(
             drawRect(Brush.verticalGradient(*Images.SHADE_AT.indices.map { Images.SHADE_AT[it] to Color.Black.copy(alpha = Images.SHADE[it]) }.toTypedArray()), alpha = stopped)
             drawRect(Brush.horizontalGradient(0f to Color.Black.copy(alpha = Images.SHADE_LEFT), 1f to Color.Transparent, endX = size.width / 2), alpha = stopped)
         }
-        Pictures(backdrop, frosted, scroll, collapse, cover)
+        Pictures(backdrop, frosted, scroll, collapse, cover, liveTv)
         if (saverImage != null) Canvas(Modifier.fillMaxSize()) {
             val a = saverReveal()
             if (a > 0.01f) drawDrawingIn(saverImage, saverPush(), a)
@@ -175,7 +185,14 @@ fun HomeBackground(
 
 /** The sharp picture and the grid's frosted one, crossfading when the wallpaper changes. */
 @Composable
-private fun Pictures(backdrop: ImageBitmap?, frosted: ImageBitmap?, scroll: () -> Float, collapse: Float, cover: () -> Float) {
+private fun Pictures(
+    backdrop: ImageBitmap?,
+    frosted: ImageBitmap?,
+    scroll: () -> Float,
+    collapse: Float,
+    cover: () -> Float,
+    liveTv: Boolean = false,
+) {
     Crossfade(
         targetState = backdrop to frosted,
         animationSpec = tween(450, easing = Motion.EaseOut),
@@ -186,6 +203,15 @@ private fun Pictures(backdrop: ImageBitmap?, frosted: ImageBitmap?, scroll: () -
         // already, so it makes the glass itself.
         val glassSrc = frost ?: bmp
         val dark = remember(glassSrc) { glassSrc?.let { darkened(it, GRID_SHADE) } }
+        // Black until there is a picture, then 600 ms to let it come up. A passthrough plane
+        // arrives whenever it likes -- a frame or a minute after Home, if the box is still
+        // booting -- and cutting straight to it, half of it, reads as a fault. Drawn here rather
+        // than with the view's own alpha, which a hardware plane need not honour.
+        val blind by animateFloatAsState(
+            if (liveTv && TvPreview.videoAvailable) 0f else 1f,
+            tween(FADE_IN_MS, easing = Motion.EaseOut),
+            label = "live-fade",
+        )
         Canvas(Modifier.fillMaxSize()) {
             // With a passthrough picture below the window there is no picture to draw here, only
             // the scrim that keeps the clock and the rows legible over it. A video plane cannot be
@@ -194,6 +220,7 @@ private fun Pictures(backdrop: ImageBitmap?, frosted: ImageBitmap?, scroll: () -
             if (liveTv) {
                 val g = if (collapse <= 0f) 0f else ((scroll() / collapse - 0.3f) / 0.4f).coerceIn(0f, 1f)
                 drawRect(Color.Black.copy(alpha = TvPreview.scrimRest + (TvPreview.scrimGrid - TvPreview.scrimRest) * g))
+                if (blind > 0.005f) drawRect(Color.Black.copy(alpha = blind))
                 return@Canvas
             }
             val film = cover()
@@ -349,6 +376,43 @@ fun PanelBackdrop(frosted: ImageBitmap?, progress: () -> Float) {
             return@Canvas
         }
         drawImage(dark, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()), filterQuality = FilterQuality.Low, alpha = a)
+    }
+}
+
+/**
+ * Says, once, that the picture behind Home is silent.
+ *
+ * A third-party app gets no sound from a passthrough input, which is the one thing about this
+ * picture that reads as broken rather than as intended. Once per run is enough: shown again on
+ * every return to Home it would be a nag rather than an explanation.
+ */
+@Composable
+fun LiveTvMutedNote(modifier: Modifier = Modifier) {
+    if (TvPreview.mutedNoteShown) return
+    var visible by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        TvPreview.mutedNoteShown = true
+        delay(MUTED_NOTE_MS)
+        visible = false
+    }
+    val alpha by animateFloatAsState(
+        if (visible) 1f else 0f,
+        tween(500, easing = Motion.EaseOut),
+        label = "muted-note",
+    )
+    if (alpha < 0.01f) return
+    val fg = Color.White.copy(alpha = 0.9f)
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .graphicsLayer { this.alpha = alpha },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GlyphIcon(Glyph.SpeakerMuted, fg, 16.dp)
+        BasicText(stringResource(R.string.live_muted_note), style = Type.Caption.copy(color = fg))
     }
 }
 

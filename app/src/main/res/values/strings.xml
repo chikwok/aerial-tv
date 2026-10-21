@@ -180,6 +180,7 @@
     <string name="device_speaker">Soundbar</string>
     <string name="menu_live_off">Stop Playing Behind Home</string>
     <string name="tile_watch_tv">Watch TV</string>
+    <string name="live_muted_note">No sound here — open Watch TV for that</string>
     <string name="cc_update_available">New Version: %s</string>
     <string name="cc_update_title">Aerial %s</string>
     <string name="cc_update_current">This TV has Aerial %s.</string>
