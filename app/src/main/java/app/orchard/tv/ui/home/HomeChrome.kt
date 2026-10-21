@@ -189,9 +189,11 @@ private fun Pictures(backdrop: ImageBitmap?, frosted: ImageBitmap?, scroll: () -
         Canvas(Modifier.fillMaxSize()) {
             // With a passthrough picture below the window there is no picture to draw here, only
             // the scrim that keeps the clock and the rows legible over it. A video plane cannot be
-            // frosted the way a wallpaper can, so the grid's darker state is not available yet.
+            // frosted the way a wallpaper can, so the grid's darker state is the same scrim drawn
+            // heavier, on the ramp the wallpaper's own darkening follows.
             if (liveTv) {
-                drawRect(Color.Black.copy(alpha = TvPreview.scrimAlpha))
+                val g = if (collapse <= 0f) 0f else ((scroll() / collapse - 0.3f) / 0.4f).coerceIn(0f, 1f)
+                drawRect(Color.Black.copy(alpha = TvPreview.scrimRest + (TvPreview.scrimGrid - TvPreview.scrimRest) * g))
                 return@Canvas
             }
             val film = cover()

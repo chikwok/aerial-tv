@@ -563,8 +563,9 @@ private fun InputsPage(vm: HomeViewModel, takeFocus: Boolean, onOpen: (android.c
 }
 
 /**
- * What Aerial does with the inputs: which ones are tiles on Home (any number) and which one the
- * TV starts on (one, or none). Kept apart from the list that switches inputs.
+ * What Aerial does with the inputs: which ones are tiles on Home (any number), which one the TV
+ * starts on (one, or none), and which one plays behind Home (one, or none). Kept apart from the
+ * list that switches inputs.
  */
 @Composable
 private fun InputSettingsPage(vm: HomeViewModel, takeFocus: Boolean) {
@@ -625,6 +626,32 @@ private fun InputSettingsPage(vm: HomeViewModel, takeFocus: Boolean) {
             style = Type.Caption,
             modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp),
         )
+
+        // Only an input a third-party app can tune at all is offered: a set-top box over HDMI.
+        val passthrough = vm.sources.filter { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
+        if (passthrough.isNotEmpty()) {
+            Spacer(Modifier.height(18.dp))
+            BasicText(stringResource(R.string.cc_inputs_live), style = Type.Callout, modifier = Modifier.padding(start = 14.dp, bottom = 6.dp))
+            ChoiceRow(
+                text = stringResource(R.string.cc_inputs_live_none),
+                selected = passthrough.none { it.id == AerialSettings.liveTvSource },
+                focusRequester = null,
+                onClick = { AerialSettings.chooseLiveTvSource(null) },
+            )
+            passthrough.forEach { source ->
+                ChoiceRow(
+                    text = name(source),
+                    selected = source.id == AerialSettings.liveTvSource,
+                    focusRequester = null,
+                    onClick = { AerialSettings.chooseLiveTvSource(source.id) },
+                )
+            }
+            BasicText(
+                stringResource(R.string.cc_inputs_live_hint),
+                style = Type.Caption,
+                modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp),
+            )
+        }
     }
 }
 

@@ -164,6 +164,9 @@
     <string name="cc_inputs_boot_none">Nothing, stay on Aerial</string>
     <string name="cc_inputs_boot_hint">Switch to this input when the TV is turned on or wakes from standby. Home still comes back to Aerial. To start on an app instead, a live TV app say, press and hold it on Home and choose Open When TV Turns On.</string>
     <string name="cc_inputs_pin_hint">Pinned inputs appear as tiles at the front of Home; select one to switch straight to it. Long-press a tile to move or remove it.</string>
+    <string name="cc_inputs_live">Play Behind Home (one)</string>
+    <string name="cc_inputs_live_none">Nothing, just the wallpaper</string>
+    <string name="cc_inputs_live_hint">The picture plays on Home itself, behind the clock and the tiles, so pressing Home is enough to watch it. Silent: a third-party app gets no sound from a passthrough input. Only HDMI and DisplayPort can do this.</string>
     <string name="menu_unpin_source">Remove from Home</string>
     <string name="menu_source_device">Connected Device</string>
     <string name="menu_source_plain">Default</string>

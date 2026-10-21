@@ -178,6 +178,8 @@ class MainActivity : ComponentActivity() {
         // The live picture follows the screensaver rather than being told about it at each of the
         // places that start and end one (idle timer, key, touch, Home), so none can be missed.
         lifecycleScope.launch { snapshotFlow { vm.screensaverVisible }.collect { TvPreview.suppress(it) } }
+        // Which input to show is a setting; the view only ever hears about it from here.
+        lifecycleScope.launch { snapshotFlow { AerialSettings.liveTvSource }.collect { TvPreview.setInput(it) } }
 
         ContextCompat.registerReceiver(this, screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON), ContextCompat.RECEIVER_NOT_EXPORTED)
         // Control Center shows things that change while it is open (Home Guard binds a few seconds

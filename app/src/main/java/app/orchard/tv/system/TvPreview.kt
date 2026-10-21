@@ -19,56 +19,101 @@ private const val TAG = "AerialTvPreview"
 /** How long to wait before tuning: a TvView has to be attached first, or the picture stays black. */
 private const val TUNE_DELAY_MS = 800L
 
-/** Live TV is busier than a landscape, so it needs a little more darkening than a wallpaper. */
-private const val SCRIM_DEFAULT = 0.30f
+/**
+ * Darkening on the top row, where the box picture is what the owner came for: light enough that
+ * it still reads as television rather than as a wallpaper.
+ */
+private const val SCRIM_REST = 0.30f
 
 /**
- * A passthrough HDMI picture behind the home screen: the set-top box on HDMI 1, watched over the
+ * Darkening once the grid has come in. The same 0.55 a wallpaper gets there (see HomeBackground),
+ * so the two backdrop kinds look like one feature rather than two.
+ */
+private const val SCRIM_GRID = 0.55f
+
+/**
+ * A passthrough picture behind the home screen: the set-top box on HDMI 1, watched over the
  * desktop the way a TV's own elder mode does it.
  *
- * This first step only answers whether it works at all. One full-screen [TvView], no decoration,
- * no settings, no boot handling: [TvPreview.on] is flipped from a computer over ADB (see
- * ConfigReceiver) so the TV does not have to be reflashed for every try.
- *
- * Three things about a passthrough picture that shape everything around it:
+ * Three things about a passthrough picture shape everything around it:
  *  - it is a hardware layer, so `screencap` cannot see it, and nothing can blur or round it;
  *  - only one of them can exist at a time, so it is either the backdrop or a tile, never both;
- *  - a third-party app gets no audio, which is why the preview is silent by design.
+ *  - a third-party app gets no audio, which is why the picture is silent by design.
  *
- * Verified on Xiaomi MiTV-MFTR0 (Android 14, MediaTek): tune(HW5) -> onVideoAvailable, 75s solid.
+ * Which input, or none, is `AerialSettings.liveTvSource`; this object only holds what the view
+ * needs, and follows that setting (see MainActivity).
+ *
+ * Verified on Xiaomi MiTV-MFTR0 (Android 14, MediaTek): tune(HW5) -> onVideoAvailable, 75s solid;
+ * 24 moves of navigation cost 3ms at the 50th percentile and 4-6ms at the 90th, against 14/15ms
+ * with the picture off.
  */
 object TvPreview {
-    /** Whether the picture is showing. Not persisted yet; step 1 flips it from ADB. */
-    var on by mutableStateOf(false)
-        private set
-
     /** The input being watched, or null when nothing is showing. */
     var inputId: String? by mutableStateOf(null)
         private set
 
-    /**
-     * How much the picture is darkened, 0..1. [HomeBackground] reads it inside its canvas, so
-     * changing it while the home screen is up redraws that canvas straight away.
-     */
-    var scrimAlpha by mutableStateOf(SCRIM_DEFAULT)
-        private set
+    /** Whether the picture is on at all, which is what the setting and the tile need to know. */
+    val on get() = inputId != null
 
     /**
-     * Set while something else on the home screen is using the picture's hardware path. The
-     * view is dropped rather than left tuned: see [suppress].
+     * Set while something else on the home screen is using the picture's hardware path. The view
+     * is dropped rather than left tuned: see [suppress].
      */
     var suppressed by mutableStateOf(false)
         private set
 
-    /** Whether the picture is on the screen right now, which is what the chrome needs to know. */
+    /** Whether the picture is on the screen right now, which is what the backdrop needs to know. */
     val showing get() = on && !suppressed
 
-    fun set(context: Context, on: Boolean) {
-        this.on = on
-        // The box is on HDMI more often than not, and a tuner cannot be tuned by a third-party
-        // app at all, so only passthrough inputs can be candidates.
-        inputId = if (on) SystemProbe.sources(context).firstOrNull { it.kind == SourceKind.Hdmi }?.id else null
-        Log.d(TAG, "set on=$on inputId=$inputId")
+    /** Darkening on the top row, 0..1; [HomeBackground] reads it inside its canvas. */
+    var scrimRest by mutableStateOf(SCRIM_REST)
+        private set
+
+    /** Darkening once the grid has come in, 0..1. */
+    var scrimGrid by mutableStateOf(SCRIM_GRID)
+        private set
+
+    /**
+     * Raised whenever the picture has to be tuned again from scratch, which is what a view that
+     * lost its surface needs: without it the session stays up, `onVideoAvailable` never comes
+     * again, and the screen stays black behind the home screen.
+     */
+    var generation by mutableStateOf(0)
+        private set
+
+    /** Follows the setting, and is the only way the view learns which input to show. */
+    fun setInput(id: String?) {
+        if (inputId == id) return
+        inputId = id
+        Log.d(TAG, "input ${id ?: "none"}")
+    }
+
+    /**
+     * The input the picture should default to: the first one a third-party app can tune at all.
+     * A tuner is never a candidate (see [SourceKind]), so a set-top box over HDMI is the case.
+     */
+    fun firstPassthrough(context: Context): TvSource? =
+        SystemProbe.sources(context).firstOrNull { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
+
+    /** Darkening in percent, 0 = none. Meant for trying values out on a real TV, not for users. */
+    fun setDim(percent: Int) {
+        scrimGrid = percent.coerceIn(0, 100) / 100f
+        // The top row keeps its share of the grid's darkening, so one number sets both.
+        scrimRest = scrimGrid * (SCRIM_REST / SCRIM_GRID)
+        Log.d(TAG, "setDim ${percent}% -> rest $scrimRest grid $scrimGrid")
+    }
+
+    /**
+     * Re-tunes the picture after the home screen came back to the front.
+     *
+     * A TvView keeps its session when something else covers the screen, but the surface under it
+     * is gone. Coming back from another app it recovers on its own after a couple of seconds;
+     * asking for it brings the picture back in about one.
+     */
+    fun retune() {
+        if (!on) return
+        generation++
+        Log.d(TAG, "retune generation=$generation")
     }
 
     /**
@@ -87,34 +132,6 @@ object TvPreview {
         if (suppressed == value) return
         suppressed = value
         Log.d(TAG, "suppress $value (on=$on)")
-    }
-
-    /**
-     * Raised whenever the picture has to be tuned again from scratch, which is what a view that
-     * lost its surface needs: without it the session stays up, `onVideoAvailable` never comes
-     * again, and the screen stays black behind the home screen.
-     */
-    var generation by mutableStateOf(0)
-        private set
-
-    /** Darkening in percent, 0 = none. Meant for trying values out on a real TV, not for users. */
-    fun setDim(percent: Int) {
-        scrimAlpha = percent.coerceIn(0, 100) / 100f
-        Log.d(TAG, "setDim $percent% -> $scrimAlpha")
-    }
-
-    /**
-     * Re-tunes the picture after the home screen came back to the front.
-     *
-     * A TvView keeps its session when something else covers the screen, but the surface under it
-     * is gone: coming back from another app it recovers on its own after a couple of seconds, yet
-     * coming back from the screensaver it never does, and only a fresh tune brings the picture
-     * back.
-     */
-    fun retune() {
-        if (!on) return
-        generation++
-        Log.d(TAG, "retune generation=$generation")
     }
 }
 

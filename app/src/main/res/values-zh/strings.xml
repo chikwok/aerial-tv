@@ -163,6 +163,9 @@
     <string name="cc_inputs_boot_none">不打开，停在 Aerial</string>
     <string name="cc_inputs_boot_hint">电视开机或从待机唤醒时，直接切到这个信号源。按主页键仍会回到 Aerial。想开机直接打开某个 App（比如直播 App），在主屏幕上长按它，选「开机时打开」。</string>
     <string name="cc_inputs_pin_hint">选中的信号源会作为磁贴出现在主屏幕最前面，按一下直接切换过去。长按磁贴可以移动或移除。</string>
+    <string name="cc_inputs_live">在桌面上播放（选一个）</string>
+    <string name="cc_inputs_live_none">不播放，只用壁纸</string>
+    <string name="cc_inputs_live_hint">画面铺在桌面背后，时钟和磁贴浮在上面，按主页键就能看。没有声音：直通信号源的声音，第三方应用拿不到。只支持 HDMI 和 DisplayPort。</string>
     <string name="menu_unpin_source">从主屏幕移除</string>
     <string name="menu_source_device">接入的设备</string>
     <string name="menu_source_plain">默认</string>

@@ -69,6 +69,13 @@ object AerialSettings {
     var bootApp by mutableStateOf<String?>(null); private set
 
     /**
+     * The passthrough input shown behind Home, by TvSource id, so the set-top box plays on the
+     * desktop the way a TV's own elder mode does; null for none. Only an input that a third-party
+     * app can tune is a candidate at all (HDMI or DisplayPort, never a tuner).
+     */
+    var liveTvSource by mutableStateOf<String?>(null); private set
+
+    /**
      * Only the top row on Home, low on the screen, so the wallpaper (a family photo) shows above it,
      * as tvOS does under a full-screen top shelf. The rest of the grid is one press down.
      */
@@ -135,6 +142,7 @@ object AerialSettings {
         pinnedSources = prefs.getStringSet("pinned_sources", null)?.toSet() ?: emptySet()
         bootSource = prefs.getString("boot_source", null)
         bootApp = prefs.getString("boot_app", null)
+        liveTvSource = prefs.getString("live_tv_source", null)
         pinHash = prefs.getString("pin_hash", null)
         pinSet = pinHash != null
         pinArrows = prefs.getBoolean("pin_arrows", false)
@@ -169,6 +177,11 @@ object AerialSettings {
 
     /** Something opens when the TV is switched on. */
     val hasBootTarget: Boolean get() = bootSource != null || bootApp != null
+
+    fun chooseLiveTvSource(id: String?) {
+        liveTvSource = id
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("live_tv_source", id) }
+    }
 
     val locked: Boolean get() = pinSet && SystemClock.elapsedRealtime() > unlockedUntil
 
