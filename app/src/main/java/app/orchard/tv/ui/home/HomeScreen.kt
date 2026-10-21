@@ -477,7 +477,7 @@ fun HomeScreen(
                 saverImage = saverImage,
                 saverReveal = { saverReveal.value },
                 saverPush = { saverPush.value },
-                liveTv = TvPreview.on,
+                liveTv = TvPreview.showing,
             )
 
             Box(Modifier.fillMaxSize().offset { IntOffset(0, -scroll.value.roundToInt()) }) {

@@ -53,12 +53,40 @@ object TvPreview {
     var scrimAlpha by mutableStateOf(SCRIM_DEFAULT)
         private set
 
+    /**
+     * Set while something else on the home screen is using the picture's hardware path. The
+     * view is dropped rather than left tuned: see [suppress].
+     */
+    var suppressed by mutableStateOf(false)
+        private set
+
+    /** Whether the picture is on the screen right now, which is what the chrome needs to know. */
+    val showing get() = on && !suppressed
+
     fun set(context: Context, on: Boolean) {
         this.on = on
         // The box is on HDMI more often than not, and a tuner cannot be tuned by a third-party
         // app at all, so only passthrough inputs can be candidates.
         inputId = if (on) SystemProbe.sources(context).firstOrNull { it.kind == SourceKind.Hdmi }?.id else null
         Log.d(TAG, "set on=$on inputId=$inputId")
+    }
+
+    /**
+     * Gives the picture up, and takes it back, while the screensaver is up.
+     *
+     * The screensaver plays a film on a SurfaceView of its own, and on a MediaTek box the one
+     * path that carries a passthrough picture and the one that carries a decoded film contend
+     * for the same overlay. The film wins, and when it goes away the picture does not come back
+     * on its own: the session still believes it has video, so no callback fires and the screen
+     * simply stays black.
+     *
+     * Dropping the view while the film plays avoids the contention entirely, and putting it back
+     * tunes from scratch, which is what brings the picture back.
+     */
+    fun suppress(value: Boolean) {
+        if (suppressed == value) return
+        suppressed = value
+        Log.d(TAG, "suppress $value (on=$on)")
     }
 
     /**
@@ -99,7 +127,9 @@ object TvPreview {
  */
 @Composable
 fun LiveTvBackdrop(modifier: Modifier = Modifier) {
-    val inputId = TvPreview.inputId ?: return
+    // Dropped entirely while suppressed, which is also what releases the view (and so the
+    // hardware path) and lets it tune from scratch when it comes back.
+    val inputId = (if (TvPreview.suppressed) null else TvPreview.inputId) ?: return
     // Read so that a re-tune recomposes: the key below has to change for the view to tune again.
     val generation = TvPreview.generation
     AndroidView(
