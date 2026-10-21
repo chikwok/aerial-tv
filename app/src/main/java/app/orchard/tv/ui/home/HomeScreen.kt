@@ -70,6 +70,7 @@ import app.orchard.tv.HomeViewModel
 import app.orchard.tv.Overlay
 import app.orchard.tv.R
 import app.orchard.tv.settings.AerialSettings
+import app.orchard.tv.system.TvPreview
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.ui.control.ControlCenter
 import app.orchard.tv.ui.wallpaper.WallpaperSheet
@@ -476,6 +477,7 @@ fun HomeScreen(
                 saverImage = saverImage,
                 saverReveal = { saverReveal.value },
                 saverPush = { saverPush.value },
+                liveTv = TvPreview.on,
             )
 
             Box(Modifier.fillMaxSize().offset { IntOffset(0, -scroll.value.roundToInt()) }) {

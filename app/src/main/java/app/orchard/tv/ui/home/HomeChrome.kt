@@ -60,6 +60,7 @@ import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.wallpaper.Images
 import app.orchard.tv.system.NetKind
 import app.orchard.tv.system.NetworkStatus
+import app.orchard.tv.system.TvPreview
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.frozen
 import app.orchard.tv.ui.components.glassEdge
@@ -150,6 +151,8 @@ fun HomeBackground(
     saverImage: ImageBitmap? = null,
     saverReveal: () -> Float = { 0f },
     saverPush: () -> Float = { 0f },
+    /** A passthrough picture is behind Home: no wallpaper and no plate to draw, only the scrim. */
+    liveTv: Boolean = false,
 ) {
     Box(Modifier.fillMaxSize()) {
         // Over a paused film, under the pictures: the shading its picture will have. The picture
@@ -184,6 +187,13 @@ private fun Pictures(backdrop: ImageBitmap?, frosted: ImageBitmap?, scroll: () -
         val glassSrc = frost ?: bmp
         val dark = remember(glassSrc) { glassSrc?.let { darkened(it, GRID_SHADE) } }
         Canvas(Modifier.fillMaxSize()) {
+            // With a passthrough picture below the window there is no picture to draw here, only
+            // the scrim that keeps the clock and the rows legible over it. A video plane cannot be
+            // frosted the way a wallpaper can, so the grid's darker state is not available yet.
+            if (liveTv) {
+                drawRect(Color.Black.copy(alpha = TvPreview.scrimAlpha))
+                return@Canvas
+            }
             val film = cover()
             // On the top row, the film alone through the window: nothing of Compose's full-screen.
             if (film > 0.99f && scroll() < collapse * 0.3f) return@Canvas

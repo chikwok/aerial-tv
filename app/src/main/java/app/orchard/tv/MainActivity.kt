@@ -28,8 +28,11 @@ import androidx.core.content.getSystemService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -54,6 +57,7 @@ import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.system.DiagLog
 import app.orchard.tv.system.Diagnostics
+import app.orchard.tv.system.LiveTvBackdrop
 import app.orchard.tv.system.MissingClipboard
 import app.orchard.tv.system.Sounds
 import app.orchard.tv.system.SystemProbe
@@ -152,15 +156,21 @@ class MainActivity : ComponentActivity() {
                 fontScale = LocalDensity.current.fontScale,
             )
             CompositionLocalProvider(LocalReducedMotion provides reducedMotion, LocalDensity provides canvas) {
-                HomeScreen(
-                    vm = vm,
-                    onLaunch = ::launch,
-                    onOpen = ::open,
-                    onAppInfo = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", it, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
-                    onUninstall = { open(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", it, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
-                    // Posted so the key-up of the Back press that started it does not end it at once.
-                    onStartScreensaver = { idleHandler.postDelayed({ showScreensaver.run() }, 150) },
-                )
+                Box(Modifier.fillMaxSize()) {
+                    // Outside HomeScreen on purpose: that composable blurs its own root when the
+                    // Control Center opens, and a SurfaceView does not survive being rendered
+                    // through an offscreen buffer, so the picture would vanish with it.
+                    LiveTvBackdrop()
+                    HomeScreen(
+                        vm = vm,
+                        onLaunch = ::launch,
+                        onOpen = ::open,
+                        onAppInfo = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", it, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
+                        onUninstall = { open(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", it, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
+                        // Posted so the key-up of the Back press that started it does not end it at once.
+                        onStartScreensaver = { idleHandler.postDelayed({ showScreensaver.run() }, 150) },
+                    )
+                }
             }
         }
 
