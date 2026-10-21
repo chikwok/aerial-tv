@@ -20,7 +20,7 @@ private const val TAG = "AerialTvPreview"
 private const val TUNE_DELAY_MS = 800L
 
 /** Live TV is busier than a landscape, so it needs a little more darkening than a wallpaper. */
-private const val SCRIM_ALPHA = 0.30f
+private const val SCRIM_DEFAULT = 0.30f
 
 /**
  * A passthrough HDMI picture behind the home screen: the set-top box on HDMI 1, watched over the
@@ -46,8 +46,12 @@ object TvPreview {
     var inputId: String? by mutableStateOf(null)
         private set
 
-    /** The darkening [HomeBackground] should fall back to while the picture is up. */
-    val scrimAlpha get() = SCRIM_ALPHA
+    /**
+     * How much the picture is darkened, 0..1. [HomeBackground] reads it inside its canvas, so
+     * changing it while the home screen is up redraws that canvas straight away.
+     */
+    var scrimAlpha by mutableStateOf(SCRIM_DEFAULT)
+        private set
 
     fun set(context: Context, on: Boolean) {
         this.on = on
@@ -55,6 +59,12 @@ object TvPreview {
         // app at all, so only passthrough inputs can be candidates.
         inputId = if (on) SystemProbe.sources(context).firstOrNull { it.kind == SourceKind.Hdmi }?.id else null
         Log.d(TAG, "set on=$on inputId=$inputId")
+    }
+
+    /** Darkening in percent, 0 = none. Meant for trying values out on a real TV, not for users. */
+    fun setDim(percent: Int) {
+        scrimAlpha = percent.coerceIn(0, 100) / 100f
+        Log.d(TAG, "setDim $percent% -> $scrimAlpha")
     }
 }
 

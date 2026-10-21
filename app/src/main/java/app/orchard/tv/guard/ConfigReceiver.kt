@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
  *   ... --ez update_test true       ("Download and Install" takes files/update-test.apk instead,
  *                                   until Aerial restarts; for trying an update before a release)
  *   ... --ez tv_preview true        (show the HDMI picture behind the home screen; see TvPreview)
+ *   ... --ei tv_preview_dim 55      (darken that picture by 55%; 0 turns the scrim off)
  * The manifest requires the sender to hold WRITE_SECURE_SETTINGS, which the ADB shell has and
  * ordinary apps cannot get, so no other app on the TV can flip these.
  */
@@ -70,6 +71,7 @@ class ConfigReceiver : BroadcastReceiver() {
             Updates.checkIfStale(force = true)
         }
         if (intent.hasExtra("tv_preview")) TvPreview.set(context, intent.getBooleanExtra("tv_preview", false))
+        if (intent.hasExtra("tv_preview_dim")) TvPreview.setDim(intent.getIntExtra("tv_preview_dim", 30))
         if (intent.hasExtra("keep_adb")) GuardSetup.setKeepAdb(context, intent.getBooleanExtra("keep_adb", false))
         if (intent.hasExtra("own_screensaver")) GuardSetup.setOwnScreensaver(context, intent.getBooleanExtra("own_screensaver", false))
         // Opt-in for an input ("*" = any recognized Apple TV input). Empty input disables.
