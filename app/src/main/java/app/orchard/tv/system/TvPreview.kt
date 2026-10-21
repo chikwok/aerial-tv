@@ -2,7 +2,10 @@ package app.orchard.tv.system
 
 import android.content.Context
 import android.media.tv.TvContract
+import android.media.tv.TvInputManager
 import android.media.tv.TvView
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +21,18 @@ private const val TAG = "AerialTvPreview"
 
 /** How long to wait before tuning: a TvView has to be attached first, or the picture stays black. */
 private const val TUNE_DELAY_MS = 800L
+
+/**
+ * How long to wait before asking again after an input said it had nothing to show.
+ *
+ * A set-top box is often still booting when Home comes up -- it is woken by the same press, and
+ * takes tens of seconds before it puts a picture on HDMI -- and a passthrough input asked too
+ * early answers WEAK_SIGNAL and is never asked again, so the screen would stay black however
+ * long the box then takes. Asking again on a backoff covers a boot: 3 s, 5 s, 10 s, 15 s, 20 s
+ * and 30 s, which is a minute and a half of waiting, and then stops, so a port that will never
+ * deliver anything is not asked forever.
+ */
+private val RETRY_DELAYS_MS = longArrayOf(3_000L, 5_000L, 10_000L, 15_000L, 20_000L, 30_000L)
 
 /**
  * Darkening on the top row, where the box picture is what the owner came for: light enough that
@@ -89,10 +104,25 @@ object TvPreview {
     var generation by mutableStateOf(0)
         private set
 
+    /** How many times an input that had nothing to show has been asked again; see [RETRY_DELAYS_MS]. */
+    var retries = 0
+        private set
+
+    /**
+     * Whether the note that says the picture is silent has been shown once this run. It explains
+     * a thing the owner would otherwise take for a fault, so once is enough; shown again on every
+     * Home would be a nag.
+     */
+    var mutedNoteShown = false
+
+    private val handler = Handler(Looper.getMainLooper())
+    private var retryPending: Runnable? = null
+
     /** Follows the setting, and is the only way the view learns which input to show. */
     fun setInput(id: String?) {
         if (inputId == id) return
         inputId = id
+        cancelRetry()
         // Nothing has been heard from the new input yet.
         videoAvailable = false
         Log.d(TAG, "input ${id ?: "none"}")
@@ -101,11 +131,51 @@ object TvPreview {
     /**
      * What the view's callbacks say about the picture; see [LiveTvBackdrop]. Not named
      * `setVideoAvailable`, which would clash with the property's own setter in bytecode.
+     *
+     * [weak] is a picture the input says it cannot deliver yet -- a box that is still booting,
+     * most often -- which is the one case worth asking about again.
      */
-    fun reportVideo(value: Boolean) {
-        if (videoAvailable == value) return
-        videoAvailable = value
-        Log.d(TAG, "videoAvailable $value")
+    fun reportVideo(value: Boolean, weak: Boolean = false) {
+        if (value) cancelRetry()
+        if (videoAvailable != value) {
+            videoAvailable = value
+            Log.d(TAG, "videoAvailable $value")
+        }
+        if (!value && weak) askAgain()
+    }
+
+    /**
+     * Asks the input again, later, for a picture it said it did not have.
+     *
+     * Nothing else will: the session stays up either way, so no callback comes when the box
+     * finally wakes, and without asking the picture would never appear. Each try tunes from
+     * scratch, which is the only thing that makes the input look at its port again -- so the
+     * tries carry on by themselves rather than waiting for another word from an input that has
+     * already said it has nothing.
+     */
+    private fun askAgain() {
+        if (!showing || retryPending != null) return
+        val attempt = retries
+        if (attempt >= RETRY_DELAYS_MS.size) {
+            Log.d(TAG, "no picture after $attempt tries; giving up")
+            return
+        }
+        val wait = RETRY_DELAYS_MS[attempt]
+        retries = attempt + 1
+        Log.d(TAG, "no picture yet; asking again in ${wait}ms (try ${attempt + 1})")
+        val run = Runnable {
+            retryPending = null
+            retune()
+            askAgain()
+        }
+        retryPending = run
+        handler.postDelayed(run, wait)
+    }
+
+    private fun cancelRetry() {
+        retryPending?.let { handler.removeCallbacks(it) }
+        retryPending = null
+        retries = 0
     }
 
     /**
@@ -151,6 +221,8 @@ object TvPreview {
     fun suppress(value: Boolean) {
         if (suppressed == value) return
         suppressed = value
+        // Nothing to ask again while the view is gone; it tunes from scratch when it comes back.
+        if (value) cancelRetry()
         Log.d(TAG, "suppress $value (on=$on)")
     }
 }
@@ -184,9 +256,11 @@ fun LiveTvBackdrop(modifier: Modifier = Modifier) {
                     }
 
                     override fun onVideoUnavailable(id: String, reason: Int) {
-                        // 2 is WEAK_SIGNAL: nothing on that port yet, e.g. the box is still booting.
+                        // WEAK_SIGNAL is nothing on that port yet, e.g. the box is still booting,
+                        // which is worth asking about again (see TvPreview.askAgain).
                         Log.d(TAG, "onVideoUnavailable $id reason=$reason")
-                        TvPreview.reportVideo(false)
+                        val weak = reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_WEAK_SIGNAL
+                        TvPreview.reportVideo(false, weak)
                     }
 
                     override fun onConnectionFailed(id: String) {
