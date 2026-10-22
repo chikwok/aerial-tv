@@ -452,10 +452,13 @@ fun HomeScreen(
                 )
             }
             // The aerial wallpaper's film, under everything; it moves only on a still top row.
+            // Not while a passthrough picture is the backdrop: two moving pictures behind Home
+            // fight over one overlay, and the film, drawn inside HomeScreen, is the one that
+            // would win -- leaving the picture the owner asked for invisible below it.
             if (Wallpapers.selectedId == Wallpapers.LIVE) {
                 LiveWallpaper(
                     moving = vm.resumed && overlay == Overlay.None && !vm.screensaverVisible && !pastShelf &&
-                        focusedRow == 0 && moving == null,
+                        !TvPreview.on && focusedRow == 0 && moving == null,
                     keep = vm.resumed && (!vm.screensaverVisible || filmSaver),
                     lastInputAt = vm.lastInputAt,
                     cover = filmCover,
