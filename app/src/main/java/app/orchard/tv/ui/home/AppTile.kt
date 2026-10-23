@@ -128,7 +128,7 @@ fun AppTile(
     onFocused: () -> Unit,
     onClick: (Rect?) -> Unit,
     onLongPress: (Rect?) -> Unit,
-    /** The input behind Home is up and delivering a picture; see [AppEntry.live]. */
+    /** The input behind Home is up and delivering a picture, and this is its tile. */
     live: Boolean = false,
     modifier: Modifier = Modifier,
     /** Last tile of its row: Right stops here instead of finding the status pill above (#211). */

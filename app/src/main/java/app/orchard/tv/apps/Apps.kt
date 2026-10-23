@@ -30,8 +30,6 @@ data class AppEntry(
     val folder: Folder? = null,
     /** Set for a place inside a firmware app (AppCatalog.shortcuts); [packageName] is then its key. */
     val shortcut: Intent? = null,
-    /** Set for the input that plays behind Home; see [liveTvEntry]. */
-    val live: Boolean = false,
 ) {
     val key: String get() = packageName
 
@@ -88,28 +86,6 @@ fun folderEntry(folder: Folder, art: TileArt): AppEntry = AppEntry(
     folder = folder,
 )
 
-/**
- * A Home tile for the input that plays behind Home, which is its own tile rather than the pinned
- * one for the same input, for two reasons: it can be called what the owner calls it -- "Watch TV"
- * rather than "HDMI 1", which is what he looks for -- and it comes and goes with that setting
- * rather than with pinning. Pinning the same input as well is left alone: both tiles go on the
- * grid, since pinning is his own doing.
- *
- * Tapping it switches the TV to that input, which is what "watching it" means: full screen, and
- * with sound, neither of which the silent picture behind Home can give.
- */
-fun liveTvEntry(source: TvSource, label: String): AppEntry = AppEntry(
-    packageName = LIVE_KEY_PREFIX + source.id,
-    label = label,
-    component = ComponentName("input", source.id),
-    leanback = false,
-    removable = false,
-    art = TileArtFactory.forSource(source.kind, label, source.deviceName),
-    source = source,
-    live = true,
-)
-
-const val LIVE_KEY_PREFIX = "live:"
 object AppCatalog {
     /** Xiaomi's app store declares only this category, not CATEGORY_LAUNCHER (MiTV-MFTR0). */
     private const val CATEGORY_APPSTORE_LAUNCHER = "android.intent.category.APPSTORE_LAUNCHER"

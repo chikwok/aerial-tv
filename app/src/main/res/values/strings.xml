@@ -92,6 +92,9 @@
     <string name="wp_photos_rotate_note">A different one of your photos each day.</string>
     <string name="wp_photo_note">Your photo. Scan the code on the right to send more from your phone.</string>
     <string name="wp_auto_note">Light taken from the selected app\'s artwork.</string>
+    <string name="cc_inputs_live">Play Behind Home (one)</string>
+    <string name="cc_inputs_live_none">Nothing, just the wallpaper</string>
+    <string name="cc_inputs_live_hint">The picture plays on Home itself, behind the clock and the tiles, so pressing Home is enough to watch it. Silent: a third-party app gets no sound from a passthrough input. Only HDMI and DisplayPort can do this.</string>
     <string name="wp_screensaver">Screensaver</string>
     <string name="ss_follow_hint">Not chosen yet, so it follows the wallpaper: aerial films with the aerial wallpaper, photos with a picture, starting from that picture. Choose one to keep it.</string>
     <string name="ss_aerial">Aerial</string>
@@ -164,9 +167,6 @@
     <string name="cc_inputs_boot_none">Nothing, stay on Aerial</string>
     <string name="cc_inputs_boot_hint">Switch to this input when the TV is turned on or wakes from standby. Home still comes back to Aerial. To start on an app instead, a live TV app say, press and hold it on Home and choose Open When TV Turns On.</string>
     <string name="cc_inputs_pin_hint">Pinned inputs appear as tiles at the front of Home; select one to switch straight to it. Long-press a tile to move or remove it.</string>
-    <string name="cc_inputs_live">Play Behind Home (one)</string>
-    <string name="cc_inputs_live_none">Nothing, just the wallpaper</string>
-    <string name="cc_inputs_live_hint">The picture plays on Home itself, behind the clock and the tiles, so pressing Home is enough to watch it. Silent: a third-party app gets no sound from a passthrough input. Only HDMI and DisplayPort can do this.</string>
     <string name="menu_unpin_source">Remove from Home</string>
     <string name="menu_source_device">Connected Device</string>
     <string name="menu_source_plain">Default</string>
@@ -179,7 +179,6 @@
     <string name="device_set_top_box">Set-top Box</string>
     <string name="device_speaker">Soundbar</string>
     <string name="menu_live_off">Stop Playing Behind Home</string>
-    <string name="tile_watch_tv">Watch TV</string>
     <string name="live_muted_note">No sound here — open Watch TV for that</string>
     <string name="cc_update_available">New Version: %s</string>
     <string name="cc_update_title">Aerial %s</string>

@@ -211,6 +211,11 @@ fun AppMenu(
                     title, style = Type.Headline, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 6.dp),
                 )
+                // The tile of the input playing behind Home, while that input is not pinned: it
+                // is on Home because of the setting, so its menu offers turning that off.
+                val liveTile = shownApp.source?.takeIf {
+                    it.id == AerialSettings.liveTvSource && it.id !in AerialSettings.pinnedSources
+                }
                 when (page) {
                     MenuPage.Main -> when {
                         folder != null -> {
@@ -218,10 +223,8 @@ fun AppMenu(
                             MenuRow(Glyph.Pencil, stringResource(R.string.menu_rename_folder), { page = MenuPage.Rename }, trailing = "›")
                             MenuRow(Glyph.Folder, stringResource(R.string.menu_ungroup), { onUngroup(folder.id) })
                         }
-                        shownApp.live -> {
-                            // The input playing behind Home: it is not pinned and cannot be hidden
-                            // or moved, because it sits where Home starts. The way off Home is to
-                            // stop playing it there, which is the setting that put it here.
+                        liveTile != null -> {
+                            // It cannot be hidden or moved, since it sits where Home starts.
                             MenuRow(Glyph.EyeSlash, stringResource(R.string.menu_live_off), { onUnpin(shownApp.key) }, focusRequester = first)
                         }
                         else -> {

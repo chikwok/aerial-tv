@@ -559,7 +559,10 @@ fun HomeScreen(
                                     vm.overlay = Overlay.AppMenu(app.key, bounds ?: Rect.Zero)
                                 }
                             },
-                            live = app.live && TvPreview.videoAvailable,
+                            // A green dot on the tile of the input playing behind Home, and only
+                            // while its picture is really on the air; any other input's tile keeps
+                            // the plain upstream look, connected or not.
+                            live = app.source != null && app.source.id == AerialSettings.liveTvSource && TvPreview.videoAvailable,
                             modifier = Modifier
                                 .offset { slot.value }
                                 .then(
@@ -719,10 +722,13 @@ fun HomeScreen(
             onUnpin = { key ->
                 closeMenu()
                 val app = apps.firstOrNull { it.key == key }
-                // The tile for the input playing behind Home answers to the setting that put it
-                // there, not to pinning: turning that off is what takes it off Home.
-                if (app?.live == true) AerialSettings.chooseLiveTvSource(null)
-                else app?.source?.let { vm.setSourcePinned(it, false) }
+                // The tile of the input playing behind Home answers to that setting, not to
+                // pinning, while the input is not pinned: turning it off takes the tile off Home.
+                if (app?.source != null && app.source.id == AerialSettings.liveTvSource && app.source.id !in AerialSettings.pinnedSources) {
+                    AerialSettings.chooseLiveTvSource(null)
+                } else {
+                    app?.source?.let { vm.setSourcePinned(it, false) }
+                }
             },
             onResetIcon = { key ->
                 closeMenu()

@@ -91,6 +91,9 @@
     <string name="wp_photos_rotate_note">从你的照片里每天换一张。</string>
     <string name="wp_photo_note">你的照片。用手机扫右边的二维码可以继续添加。</string>
     <string name="wp_auto_note">取所选 App 图片里的颜色做背景。</string>
+    <string name="cc_inputs_live">在桌面上播放（选一个）</string>
+    <string name="cc_inputs_live_none">不播放，只用壁纸</string>
+    <string name="cc_inputs_live_hint">画面铺在桌面背后，时钟和磁贴浮在上面，按主页键就能看。没有声音：直通信号源的声音，第三方应用拿不到。只支持 HDMI 和 DisplayPort。</string>
     <string name="wp_screensaver">屏幕保护程序</string>
     <string name="ss_follow_hint">还没选过，跟随壁纸：航拍壁纸配航拍，其他壁纸配照片，并从这张壁纸开始。选一个就固定下来。</string>
     <string name="ss_aerial">航拍</string>
@@ -163,9 +166,6 @@
     <string name="cc_inputs_boot_none">不打开，停在 Aerial</string>
     <string name="cc_inputs_boot_hint">电视开机或从待机唤醒时，直接切到这个信号源。按主页键仍会回到 Aerial。想开机直接打开某个 App（比如直播 App），在主屏幕上长按它，选「开机时打开」。</string>
     <string name="cc_inputs_pin_hint">选中的信号源会作为磁贴出现在主屏幕最前面，按一下直接切换过去。长按磁贴可以移动或移除。</string>
-    <string name="cc_inputs_live">在桌面上播放（选一个）</string>
-    <string name="cc_inputs_live_none">不播放，只用壁纸</string>
-    <string name="cc_inputs_live_hint">画面铺在桌面背后，时钟和磁贴浮在上面，按主页键就能看。没有声音：直通信号源的声音，第三方应用拿不到。只支持 HDMI 和 DisplayPort。</string>
     <string name="menu_unpin_source">从主屏幕移除</string>
     <string name="menu_source_device">接入的设备</string>
     <string name="menu_source_plain">默认</string>
@@ -178,7 +178,6 @@
     <string name="device_set_top_box">机顶盒</string>
     <string name="device_speaker">回音壁</string>
     <string name="menu_live_off">不在桌面上播放</string>
-    <string name="tile_watch_tv">看电视</string>
     <string name="live_muted_note">这里没有声音，要声音请打开「看电视」</string>
     <string name="cc_update_available">有新版本 %s</string>
     <string name="cc_update_title">Aerial %s</string>
