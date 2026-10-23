@@ -179,6 +179,7 @@
     <string name="device_computer">Computer</string>
     <string name="device_set_top_box">Set-top Box</string>
     <string name="device_speaker">Soundbar</string>
+    <string name="device_tv">Watch TV</string>
     <string name="menu_live_off">Stop Playing Behind Home</string>
     <string name="live_muted_note">No sound here — open Watch TV for that</string>
     <string name="cc_update_available">New Version: %s</string>

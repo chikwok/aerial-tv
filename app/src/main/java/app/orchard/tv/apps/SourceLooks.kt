@@ -47,6 +47,12 @@ enum class SourceDevice(val key: String, @StringRes val label: Int, val top: Int
         "speaker", R.string.device_speaker, 0xFF6C6F78.toInt(), 0xFF2A2C31.toInt(),
         "M451.5-588.5Q440-577 440-560v80q0 17 11.5 28.5T480-440q17 0 28.5-11.5T520-480v-80q0-17-11.5-28.5T480-600q-17 0-28.5 11.5Zm-103 377Q337-200 320-200h-80q-17 0-28.5-11.5T200-240q0-17 11.5-28.5T240-280h80q17 0 28.5 11.5T360-240q0 17-11.5 28.5Zm400 0Q737-200 720-200h-80q-17 0-28.5-11.5T600-240q0-17 11.5-28.5T640-280h80q17 0 28.5 11.5T760-240q0 17-11.5 28.5ZM280-440q33 0 56.5-23.5T360-520q0-33-23.5-56.5T280-600q-33 0-56.5 23.5T200-520q0 33 23.5 56.5T280-440Zm400 0q33 0 56.5-23.5T760-520q0-33-23.5-56.5T680-600q-33 0-56.5 23.5T600-520q0 33 23.5 56.5T680-440ZM160-320q-33 0-56.5-23.5T80-400v-240q0-33 23.5-56.5T160-720h640q33 0 56.5 23.5T880-640v240q0 33-23.5 56.5T800-320H160Z",
     ),
+    // Not a device but what the family does with one: watching television is what an input is
+    // most often for, and the name says so without typing it.
+    Tv(
+        "tv", R.string.device_tv, 0xFF2E9BB8.toInt(), 0xFF0E4A5C.toInt(),
+        "M180-600h600q33 0 56.5 23.5T860-520v180q0 33-23.5 56.5T780-260H180q-33 0-56.5-23.5T100-340v-180q0-33 23.5-56.5T180-600ZM420-260h120v60H420v-60ZM320-200h320q17 0 28.5 11.5T680-160q0 17-11.5 28.5T640-120H320q-17 0-28.5-11.5T280-160q0-17 11.5-28.5T320-200Z",
+    ),
     ;
 
     companion object {
