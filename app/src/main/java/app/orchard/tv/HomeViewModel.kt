@@ -151,7 +151,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             all = AppCatalog.load(ctx)
             DiagLog.i("${all.size} apps in ${SystemClock.uptimeMillis() - started} ms")
             sources = withContext(Dispatchers.Default) { SystemProbe.sources(ctx) }
-            arrange()
+            // An older build let an input play behind Home without it being on Home at all.
+            // The two are one now -- the wallpaper picks among the inputs fixed to Home -- so
+            // the one already playing is fixed there, the way pinning it would, which keeps
+            // the picture and the tile the owner already has.
+            val playing = AerialSettings.liveTvSource?.let { id -> sources.firstOrNull { it.id == id } }
+            if (playing != null && playing.id !in AerialSettings.pinnedSources) setSourcePinned(playing, true)
+            else arrange()
             if (!loaded) DiagLog.i("Home loaded: ${apps.size} tiles, ${sources.size} inputs, ${SystemClock.uptimeMillis() - started} ms")
             loaded = true
         }
@@ -160,24 +166,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private fun arrange() {
         // Pinned TV inputs share the grid, order and hiding with the apps, exactly as they do
         // without the picture behind Home: pinning is what puts them there, and nothing else.
+        // The input playing behind Home is one of them, so its tile is the input's own, where
+        // pinning put it.
         val pinned = sources.filter { it.id in AerialSettings.pinnedSources }.map { sourceEntry(context, it) }
-        // The input playing behind Home has a tile of its own on the grid -- the one the input
-        // already has, under the name the owner gave it -- even when it is not pinned: Home is
-        // what he presses to watch it, so there has to be a tile to press. It comes first, since
-        // that is where he looks. Pinning the same input is his own doing; then that tile is the
-        // one and nothing is added.
-        val live = AerialSettings.liveTvSource
-            ?.let { id -> sources.firstOrNull { it.id == id } }
-            ?.takeIf { source -> pinned.none { it.source?.id == source.id } }
-            ?.let { sourceEntry(context, it) }
         AppCatalog.pinnedSources = pinned
-        val arrangement = store.arrange(all + pinned + listOfNotNull(live)) { folder, inside ->
+        val arrangement = store.arrange(all + pinned) { folder, inside ->
             val shown = inside.take(9).map { it.art }
             val art = folderArt[folder.id]?.takeIf { (made, _) -> made.size == shown.size && made.indices.all { made[it] === shown[it] } }?.second
                 ?: TileArtFactory.forFolder(shown).also { folderArt[folder.id] = shown to it }
             folderEntry(folder, art)
         }
-        apps = arrangement.home.sortedWith(compareBy { it.key != live?.key })
+        apps = arrangement.home
         folderApps = arrangement.folders
         hiddenApps = arrangement.hidden
     }
@@ -263,16 +262,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Pins a TV input to Home (as the first tile, where it is easiest to reach) or takes it off. */
+    /**
+     * Pins a TV input to Home (as the first tile, where it is easiest to reach) or takes it off.
+     * Taking off the input that plays behind Home takes its picture down with it: that picture
+     * is one of the tiles'.
+     */
     fun setSourcePinned(source: TvSource, pinned: Boolean) {
         AerialSettings.setPinned(source.id, pinned)
         arrange()
         if (pinned) {
-            // In front of the apps, but behind the tile of the input playing behind Home while
-            // that one is held first by arrange; pinning that same input keeps it first.
-            val liveId = AerialSettings.liveTvSource
             val key = apps.firstOrNull { it.source?.id == source.id }?.key
-            val first = apps.firstOrNull { liveId == null || it.source?.id != liveId }?.key
+            val first = apps.firstOrNull()?.key
             if (key != null && first != null && key != first) {
                 store.move(key, first)
                 arrange()

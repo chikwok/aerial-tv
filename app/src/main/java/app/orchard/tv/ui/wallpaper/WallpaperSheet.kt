@@ -162,13 +162,19 @@ fun WallpaperSheet(
                     // chosen one, the row that picks which input sits with it, as its own setting.
                     val liveSource = AerialSettings.liveTvSource
                     if (liveSource != null) {
-                        val passthrough = sources.filter { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
-                        if (passthrough.isNotEmpty()) {
+                        // Only the inputs fixed to Home can play behind it, and the one playing
+                        // is fixed there, so there is always at least that one to choose from.
+                        val behindHome = sources.filter {
+                            (it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort) && it.id in AerialSettings.pinnedSources
+                        }
+                        if (behindHome.isNotEmpty()) {
                             Spacer(Modifier.height(10.dp))
                             Group { note ->
-                                val options: List<Pair<String?, Any>> =
-                                    listOf(null to R.string.wp_live_source_none) + passthrough.map { it.id to sourceName(context, it) }
-                                Choices(
+                                // The inputs on Home, and nothing else: no "nothing" choice, since
+                                // the way to have no input behind Home is to pick a wallpaper
+                                // instead, the way it has always been.
+                                val options: List<Pair<String, Any>> = behindHome.map { it.id to sourceName(context, it) }
+                                Choices<String?>(
                                     R.string.wp_live_source, stringResource(R.string.wp_live_source_hint), note,
                                     options, liveSource, AerialSettings::chooseLiveTvSource, first = true,
                                 )
@@ -315,7 +321,7 @@ private sealed interface RowItem {
         override val key: String get() = wp.id
     }
 
-    /** The card for the input behind Home; it is there only where an input can play at all. */
+    /** The card for the input behind Home; it is there only where one is fixed to Home. */
     data object Input : RowItem {
         override val key: String get() = LIVE_CARD_KEY
     }
@@ -325,10 +331,10 @@ private const val LIVE_CARD_KEY = "input:behind-home"
 
 /**
  * Every wallpaper in one row, in the order most people want them: the moving aerial, the input
- * that can play behind Home, Bing's photo of the day, the owner's own photos, then a few of the
- * built-in pictures and "Follow App". Past daily photos and the rest of the built-ins are left
- * out unless one of them is the current choice. The focused card's note is under the row, as
- * under a group of settings.
+ * fixed to Home that can play behind it, Bing's photo of the day, the owner's own photos, then a
+ * few of the built-in pictures and "Follow App". Past daily photos and the rest of the built-ins
+ * are left out unless one of them is the current choice. The focused card's note is under the
+ * row, as under a group of settings.
  */
 @Composable
 private fun WallpaperRows(sources: List<TvSource>) {
@@ -343,13 +349,24 @@ private fun WallpaperRows(sources: List<TvSource>) {
     val dailyTitle = stringResource(R.string.wp_daily_latest)
     val rotateTitle = stringResource(R.string.wp_photos_rotate)
     val inputNote = stringResource(R.string.wp_live_source_note)
-    val canPlayBehindHome = sources.any { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
-    val list = remember(items, selected, liveSource, dailyTitle, rotateTitle, canPlayBehindHome) {
+    // The wallpaper that is an input's picture plays one of the inputs fixed to Home: pinning
+    // is what puts an input on Home, and this picks among those, one of them at a time.
+    val behindHome = remember(sources, AerialSettings.pinnedSources) {
+        sources.filter {
+            (it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort) && it.id in AerialSettings.pinnedSources
+        }
+    }
+    // The sheet opens on the wallpaper already chosen -- the input playing behind Home when
+    // there is one, else the wallpaper itself. The OK that opens the sheet, or a second one
+    // right after, then lands on what is already chosen and does nothing, rather than
+    // switching the backdrop the moment the sheet comes up.
+    val chosenKey = if (liveSource != null) LIVE_CARD_KEY else items.firstOrNull { it.id == selected }?.id
+    val list = remember(items, selected, liveSource, dailyTitle, rotateTitle, behindHome) {
         buildList {
             addAll(items.filter { it.kind == WallpaperKind.Live }.map { RowItem.Paper(it) })
-            // Beside the aerial film: the other wallpaper that moves. Only where an input can
-            // play behind Home at all, so TVs with nothing to pass through never see the card.
-            if (canPlayBehindHome) add(RowItem.Input)
+            // Beside the aerial film: the other wallpaper that moves. Only once an input is
+            // fixed to Home, since that is the one thing this wallpaper needs.
+            if (behindHome.isNotEmpty()) add(RowItem.Input)
             if (items.any { it.kind == WallpaperKind.Daily }) add(RowItem.Paper(Wallpaper(Wallpapers.LATEST_DAILY, WallpaperKind.Daily, dailyTitle)))
             addAll(items.filter { it.kind == WallpaperKind.Daily && it.id == selected }.map { RowItem.Paper(it) })
             val photos = items.filter { it.kind == WallpaperKind.Photo }
@@ -361,6 +378,7 @@ private fun WallpaperRows(sources: List<TvSource>) {
         }
     }
     var note by remember { mutableStateOf<String?>(null) }
+    val focusKey = chosenKey?.takeIf { key -> list.any { it.key == key } } ?: list.firstOrNull()?.key
     // A row clips to its bounds, and the focused card grows by 8%: room on the left for that,
     // with the row moved back by as much so the cards still line up with the titles.
     LazyRow(
@@ -369,15 +387,16 @@ private fun WallpaperRows(sources: List<TvSource>) {
         contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 6.dp, bottom = 4.dp),
     ) {
         items(list, key = { it.key }) { item ->
+            val focused = if (item.key == focusKey) first else null
             when (item) {
                 is RowItem.Paper -> {
                     val hint = wallpaperNote(item.wp)
-                    WallpaperCard(item.wp, if (item === list.first()) first else null, onFocused = { note = hint })
+                    WallpaperCard(item.wp, focused, onFocused = { note = hint })
                 }
                 RowItem.Input -> LiveSourceCard(
-                    sources = sources,
+                    sources = behindHome,
                     chosen = liveSource,
-                    focusRequester = if (item === list.first()) first else null,
+                    focusRequester = focused,
                     onFocused = { note = inputNote },
                 )
             }
@@ -390,8 +409,9 @@ private fun WallpaperRows(sources: List<TvSource>) {
 
 /**
  * The wallpaper that is an input's picture: it comes with the name the owner gave the input, and
- * a check while it is the chosen wallpaper. Pressing it the first time takes the first input that
- * can play behind Home; the row under the wallpapers then picks another or turns it off.
+ * a check while it is the chosen wallpaper. Pressing it the first time takes the first input
+ * fixed to Home; the row under the wallpapers then picks another. Stopping the picture is done
+ * the way a wallpaper is chosen: pick one, or "不在桌面上播放" in the tile's menu.
  */
 @Composable
 private fun LiveSourceCard(sources: List<TvSource>, chosen: String?, focusRequester: FocusRequester?, onFocused: () -> Unit) {
@@ -399,10 +419,7 @@ private fun LiveSourceCard(sources: List<TvSource>, chosen: String?, focusReques
     val input = sources.firstOrNull { it.id == chosen }
     Pressable(
         onClick = {
-            if (chosen == null) {
-                sources.firstOrNull { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
-                    ?.let { AerialSettings.chooseLiveTvSource(it.id) }
-            }
+            if (chosen == null) sources.firstOrNull()?.let { AerialSettings.chooseLiveTvSource(it.id) }
         },
         focusRequester = focusRequester,
         focusedScale = 1.08f,

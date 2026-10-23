@@ -144,6 +144,8 @@ fun AppMenu(
     onInfo: (String) -> Unit,
     onUninstall: (String) -> Unit,
     onUnpin: (String) -> Unit,
+    /** Stops the input behind Home from playing there; its tile stays, pinned as it is. */
+    onLiveOff: () -> Unit,
     onResetIcon: (String) -> Unit,
     /** Opens [AppEntry.key] when the TV is switched on, or stops opening it. */
     onBootTarget: (String) -> Unit,
@@ -211,21 +213,15 @@ fun AppMenu(
                     title, style = Type.Headline, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 6.dp),
                 )
-                // The tile of the input playing behind Home, while that input is not pinned: it
-                // is on Home because of the setting, so its menu offers turning that off.
-                val liveTile = shownApp.source?.takeIf {
-                    it.id == AerialSettings.liveTvSource && it.id !in AerialSettings.pinnedSources
-                }
+                // The tile of the input playing behind Home: a pinned input like any other,
+                // whose menu also says how to stop the picture, which is the wallpaper's doing.
+                val liveTile = shownApp.source?.takeIf { it.id == AerialSettings.liveTvSource }
                 when (page) {
                     MenuPage.Main -> when {
                         folder != null -> {
                             MenuRow(Glyph.Move, stringResource(R.string.menu_move), { onMove(shownApp.key) }, focusRequester = first)
                             MenuRow(Glyph.Pencil, stringResource(R.string.menu_rename_folder), { page = MenuPage.Rename }, trailing = "›")
                             MenuRow(Glyph.Folder, stringResource(R.string.menu_ungroup), { onUngroup(folder.id) })
-                        }
-                        liveTile != null -> {
-                            // It cannot be hidden or moved, since it sits where Home starts.
-                            MenuRow(Glyph.EyeSlash, stringResource(R.string.menu_live_off), { onUnpin(shownApp.key) }, focusRequester = first)
                         }
                         else -> {
                             if (inFolder) {
@@ -239,6 +235,10 @@ fun AppMenu(
                                 MenuRow(Glyph.Input, stringResource(R.string.menu_source_device), { page = MenuPage.Device }, trailing = "›")
                                 if (CustomIcons.has(shownApp.key)) {
                                     MenuRow(Glyph.Photo, stringResource(R.string.menu_reset_icon), { onResetIcon(shownApp.key) })
+                                }
+                                // The picture stops here; the tile stays, since pinning put it there.
+                                if (liveTile != null) {
+                                    MenuRow(Glyph.EyeSlash, stringResource(R.string.menu_live_off), { onLiveOff() })
                                 }
                                 MenuRow(Glyph.EyeSlash, stringResource(R.string.menu_unpin_source), { onUnpin(shownApp.key) })
                             } else {

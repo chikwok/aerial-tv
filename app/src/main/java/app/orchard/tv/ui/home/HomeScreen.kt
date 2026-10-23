@@ -721,14 +721,12 @@ fun HomeScreen(
             onUninstall = { closeMenu(); onUninstall(it) },
             onUnpin = { key ->
                 closeMenu()
-                val app = apps.firstOrNull { it.key == key }
-                // The tile of the input playing behind Home answers to that setting, not to
-                // pinning, while the input is not pinned: turning it off takes the tile off Home.
-                if (app?.source != null && app.source.id == AerialSettings.liveTvSource && app.source.id !in AerialSettings.pinnedSources) {
-                    AerialSettings.chooseLiveTvSource(null)
-                } else {
-                    app?.source?.let { vm.setSourcePinned(it, false) }
-                }
+                apps.firstOrNull { it.key == key }?.source?.let { vm.setSourcePinned(it, false) }
+            },
+            // The picture stops; the tile stays, since pinning is what put it on Home.
+            onLiveOff = {
+                closeMenu()
+                AerialSettings.chooseLiveTvSource(null)
             },
             onResetIcon = { key ->
                 closeMenu()

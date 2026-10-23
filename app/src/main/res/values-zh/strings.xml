@@ -87,10 +87,9 @@
     <string name="wp_daily_latest">每日一图</string>
     <string name="wp_live">动态航拍。在主屏幕第一行停 10 秒后开始播放，按任意键停在当前画面并留作壁纸，下次从这一帧接着播。</string>
     <string name="wp_live_source_pick">信号源画面</string>
-    <string name="wp_live_source_note">桌面背后播放一个信号源的画面，无声。选中后可在下面选哪个；桌面磁贴会显示信号源的名字，画面在播时带绿点。</string>
+    <string name="wp_live_source_note">桌面背后播放一个信号源的画面，无声。只有固定到主屏幕的信号源可以选；桌面磁贴会显示信号源的名字，画面在播时带绿点。</string>
     <string name="wp_live_source">桌面播放的信号源</string>
-    <string name="wp_live_source_hint">画面铺在桌面背后，时钟和磁贴浮在上面，按主页键就能看。没有声音：直通信号源的声音，第三方应用拿不到。只支持 HDMI 和 DisplayPort。</string>
-    <string name="wp_live_source_none">不播放，只用壁纸</string>
+    <string name="wp_live_source_hint">画面铺在桌面背后，时钟和磁贴浮在上面，按主页键就能看。没有声音：直通信号源的声音，第三方应用拿不到。只有固定到主屏幕的 HDMI 和 DisplayPort 信号源可以。</string>
     <string name="wp_photos_rotate">我的照片 · 每天换</string>
     <string name="wp_daily_note">必应每日一图，每天自动换成当天的。</string>
     <string name="wp_photos_rotate_note">从你的照片里每天换一张。</string>
@@ -167,7 +166,7 @@
     <string name="cc_inputs_boot">开机时打开（选一个）</string>
     <string name="cc_inputs_boot_none">不打开，停在 Aerial</string>
     <string name="cc_inputs_boot_hint">电视开机或从待机唤醒时，直接切到这个信号源。按主页键仍会回到 Aerial。想开机直接打开某个 App（比如直播 App），在主屏幕上长按它，选「开机时打开」。</string>
-    <string name="cc_inputs_pin_hint">选中的信号源会作为磁贴出现在主屏幕最前面，按一下直接切换过去。长按磁贴可以移动或移除。</string>
+    <string name="cc_inputs_pin_hint">选中的信号源会作为磁贴出现在主屏幕最前面，按一下直接切换过去。长按磁贴可以移动或移除。其中一个还能铺在桌面背后无声播放，到「个性化」里选。</string>
     <string name="menu_unpin_source">从主屏幕移除</string>
     <string name="menu_source_device">接入的设备</string>
     <string name="menu_source_plain">默认</string>

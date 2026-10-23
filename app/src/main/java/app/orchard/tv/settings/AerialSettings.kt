@@ -70,8 +70,10 @@ object AerialSettings {
 
     /**
      * The passthrough input shown behind Home, by TvSource id, so the set-top box plays on the
-     * desktop the way a TV's own elder mode does; null for none. Only an input that a third-party
-     * app can tune is a candidate at all (HDMI or DisplayPort, never a tuner).
+     * desktop the way a TV's own elder mode does; null for none. It is one of the inputs pinned
+     * to Home ([pinnedSources]): the wallpaper picks among those, it does not put an input on
+     * Home of its own. Only an input that a third-party app can tune is a candidate at all
+     * (HDMI or DisplayPort, never a tuner).
      */
     var liveTvSource by mutableStateOf<String?>(null); private set
 
@@ -179,8 +181,10 @@ object AerialSettings {
     val hasBootTarget: Boolean get() = bootSource != null || bootApp != null
 
     fun chooseLiveTvSource(id: String?) {
-        liveTvSource = id
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("live_tv_source", id) }
+        // The input behind Home is one of those fixed to Home; anything else is not a choice
+        // this setting can make.
+        liveTvSource = id?.takeIf { it in pinnedSources }
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("live_tv_source", liveTvSource) }
     }
 
     val locked: Boolean get() = pinSet && SystemClock.elapsedRealtime() > unlockedUntil
@@ -258,7 +262,13 @@ object AerialSettings {
 
     fun setPinned(inputId: String, pinned: Boolean) {
         pinnedSources = if (pinned) pinnedSources + inputId else pinnedSources - inputId
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet("pinned_sources", pinnedSources) }
+        // The picture behind Home belongs to one of the inputs on Home: taking that input off
+        // Home takes the picture down with it.
+        if (!pinned && inputId == liveTvSource) liveTvSource = null
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putStringSet("pinned_sources", pinnedSources)
+            putString("live_tv_source", liveTvSource)
+        }
     }
 
 
