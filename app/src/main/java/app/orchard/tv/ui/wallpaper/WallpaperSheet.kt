@@ -1,5 +1,6 @@
 package app.orchard.tv.ui.wallpaper
 
+import android.content.Context
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -60,10 +61,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.orchard.tv.R
+import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.settings.FocusStyle
 import app.orchard.tv.settings.UiSounds
 import app.orchard.tv.system.Sounds
+import app.orchard.tv.system.SourceKind
+import app.orchard.tv.system.TvSource
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.consumeTaps
 import app.orchard.tv.ui.components.dismissOnTap
@@ -101,6 +105,7 @@ fun WallpaperSheet(
     onHiddenApps: () -> Unit,
     onStartScreensaver: () -> Unit,
     onPin: (on: Boolean) -> Unit,
+    sources: List<TvSource>,
 ) {
     val context = LocalContext.current
     var phoneUrl by remember { mutableStateOf<String?>(null) }
@@ -152,7 +157,24 @@ fun WallpaperSheet(
                     BasicText(stringResource(R.string.wp_title), style = Type.LargeTitle)
                     Spacer(Modifier.height(16.dp))
                     SectionTitle(R.string.wp_wallpaper)
-                    WallpaperRows()
+                    WallpaperRows(sources)
+                    // The input playing behind Home is a wallpaper like any other; while it is the
+                    // chosen one, the row that picks which input sits with it, as its own setting.
+                    val liveSource = AerialSettings.liveTvSource
+                    if (liveSource != null) {
+                        val passthrough = sources.filter { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
+                        if (passthrough.isNotEmpty()) {
+                            Spacer(Modifier.height(10.dp))
+                            Group { note ->
+                                val options: List<Pair<String?, Any>> =
+                                    listOf(null to R.string.wp_live_source_none) + passthrough.map { it.id to sourceName(context, it) }
+                                Choices(
+                                    R.string.wp_live_source, stringResource(R.string.wp_live_source_hint), note,
+                                    options, liveSource, AerialSettings::chooseLiveTvSource, first = true,
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(6.dp))
                     SectionTitle(R.string.st_home_layout)
@@ -286,16 +308,33 @@ fun WallpaperSheet(
     }
 }
 
+/** One card in the wallpaper row: a wallpaper, or the input whose picture plays behind Home. */
+private sealed interface RowItem {
+    val key: String
+    data class Paper(val wp: Wallpaper) : RowItem {
+        override val key: String get() = wp.id
+    }
+
+    /** The card for the input behind Home; it is there only where an input can play at all. */
+    data object Input : RowItem {
+        override val key: String get() = LIVE_CARD_KEY
+    }
+}
+
+private const val LIVE_CARD_KEY = "input:behind-home"
+
 /**
- * Every wallpaper in one row, in the order most people want them: the moving aerial, Bing's photo
- * of the day, the owner's own photos, then a few of the built-in pictures and "Follow App". Past
- * daily photos and the rest of the built-ins are left out unless one of them is the current
- * choice. The focused card's note is under the row, as under a group of settings.
+ * Every wallpaper in one row, in the order most people want them: the moving aerial, the input
+ * that can play behind Home, Bing's photo of the day, the owner's own photos, then a few of the
+ * built-in pictures and "Follow App". Past daily photos and the rest of the built-ins are left
+ * out unless one of them is the current choice. The focused card's note is under the row, as
+ * under a group of settings.
  */
 @Composable
-private fun WallpaperRows() {
+private fun WallpaperRows(sources: List<TvSource>) {
     val items = Wallpapers.items
     val selected = Wallpapers.selectedId
+    val liveSource = AerialSettings.liveTvSource
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -303,17 +342,22 @@ private fun WallpaperRows() {
     }
     val dailyTitle = stringResource(R.string.wp_daily_latest)
     val rotateTitle = stringResource(R.string.wp_photos_rotate)
-    val list = remember(items, selected, dailyTitle, rotateTitle) {
+    val inputNote = stringResource(R.string.wp_live_source_note)
+    val canPlayBehindHome = sources.any { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
+    val list = remember(items, selected, liveSource, dailyTitle, rotateTitle, canPlayBehindHome) {
         buildList {
-            addAll(items.filter { it.kind == WallpaperKind.Live })
-            if (items.any { it.kind == WallpaperKind.Daily }) add(Wallpaper(Wallpapers.LATEST_DAILY, WallpaperKind.Daily, dailyTitle))
-            addAll(items.filter { it.kind == WallpaperKind.Daily && it.id == selected })
+            addAll(items.filter { it.kind == WallpaperKind.Live }.map { RowItem.Paper(it) })
+            // Beside the aerial film: the other wallpaper that moves. Only where an input can
+            // play behind Home at all, so TVs with nothing to pass through never see the card.
+            if (canPlayBehindHome) add(RowItem.Input)
+            if (items.any { it.kind == WallpaperKind.Daily }) add(RowItem.Paper(Wallpaper(Wallpapers.LATEST_DAILY, WallpaperKind.Daily, dailyTitle)))
+            addAll(items.filter { it.kind == WallpaperKind.Daily && it.id == selected }.map { RowItem.Paper(it) })
             val photos = items.filter { it.kind == WallpaperKind.Photo }
             // With two or more, one card takes turns through all of them, one a day (#27).
-            if (photos.size > 1) add(Wallpaper(Wallpapers.ROTATE_PHOTOS, WallpaperKind.Photo, rotateTitle))
-            addAll(photos)
-            addAll(items.filter { it.kind == WallpaperKind.Builtin && (it.id in Wallpapers.FEATURED_BUILTINS || it.id == selected) })
-            addAll(items.filter { it.kind == WallpaperKind.Auto })
+            if (photos.size > 1) add(RowItem.Paper(Wallpaper(Wallpapers.ROTATE_PHOTOS, WallpaperKind.Photo, rotateTitle)))
+            addAll(photos.map { RowItem.Paper(it) })
+            addAll(items.filter { it.kind == WallpaperKind.Builtin && (it.id in Wallpapers.FEATURED_BUILTINS || it.id == selected) }.map { RowItem.Paper(it) })
+            addAll(items.filter { it.kind == WallpaperKind.Auto }.map { RowItem.Paper(it) })
         }
     }
     var note by remember { mutableStateOf<String?>(null) }
@@ -324,14 +368,84 @@ private fun WallpaperRows() {
         horizontalArrangement = Arrangement.spacedBy(18.dp),
         contentPadding = PaddingValues(start = 14.dp, end = 24.dp, top = 6.dp, bottom = 4.dp),
     ) {
-        items(list, key = { it.id }) { wp ->
-            val hint = wallpaperNote(wp)
-            WallpaperCard(wp, if (wp === list.first()) first else null, onFocused = { note = hint })
+        items(list, key = { it.key }) { item ->
+            when (item) {
+                is RowItem.Paper -> {
+                    val hint = wallpaperNote(item.wp)
+                    WallpaperCard(item.wp, if (item === list.first()) first else null, onFocused = { note = hint })
+                }
+                RowItem.Input -> LiveSourceCard(
+                    sources = sources,
+                    chosen = liveSource,
+                    focusRequester = if (item === list.first()) first else null,
+                    onFocused = { note = inputNote },
+                )
+            }
         }
     }
     Box(Modifier.height(42.dp).padding(start = 4.dp, top = 8.dp)) {
         note?.let { BasicText(it, style = Type.Caption.copy(color = Palette.TertiaryLabel), maxLines = 2, overflow = TextOverflow.Ellipsis) }
     }
+}
+
+/**
+ * The wallpaper that is an input's picture: it comes with the name the owner gave the input, and
+ * a check while it is the chosen wallpaper. Pressing it the first time takes the first input that
+ * can play behind Home; the row under the wallpapers then picks another or turns it off.
+ */
+@Composable
+private fun LiveSourceCard(sources: List<TvSource>, chosen: String?, focusRequester: FocusRequester?, onFocused: () -> Unit) {
+    val context = LocalContext.current
+    val input = sources.firstOrNull { it.id == chosen }
+    Pressable(
+        onClick = {
+            if (chosen == null) {
+                sources.firstOrNull { it.kind == SourceKind.Hdmi || it.kind == SourceKind.DisplayPort }
+                    ?.let { AerialSettings.chooseLiveTvSource(it.id) }
+            }
+        },
+        focusRequester = focusRequester,
+        focusedScale = 1.08f,
+    ) { state ->
+        LaunchedEffect(state.focused) { if (state.focused) onFocused() }
+        Column(Modifier.width(168.dp)) {
+            Box(
+                Modifier
+                    .size(168.dp, 94.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Palette.Fill)
+                    .border(
+                        if (state.focused || chosen != null) 3.dp else 1.dp,
+                        when {
+                            state.focused -> Palette.Focus
+                            chosen != null -> Palette.Focus.copy(alpha = 0.55f)
+                            else -> Palette.Hairline
+                        },
+                        RoundedCornerShape(12.dp),
+                    ),
+            ) {
+                GlyphIcon(Glyph.Hdmi, Color.White.copy(alpha = 0.5f), 30.dp, Modifier.align(Alignment.Center))
+                if (chosen != null) {
+                    Box(
+                        Modifier.align(Alignment.TopEnd).padding(7.dp).size(22.dp).clip(CircleShape).background(Palette.Focus),
+                        contentAlignment = Alignment.Center,
+                    ) { GlyphIcon(Glyph.Check, Palette.OnFocus, 13.dp) }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            BasicText(
+                input?.let { sourceName(context, it) } ?: stringResource(R.string.wp_live_source_pick),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = Type.Caption.copy(color = if (state.focused) Palette.Label else Palette.SecondaryLabel),
+            )
+        }
+    }
+}
+
+/** What an input is called where its name is shown: the owner's name for it, or its own label. */
+private fun sourceName(context: Context, source: TvSource): String {
+    val look = SourceLooks.of(source.id)
+    return look?.name ?: look?.device?.let { context.getString(it.label) } ?: source.label
 }
 
 /** What a wallpaper card is, for the note under the row; null where its picture says it all. */
@@ -348,11 +462,20 @@ private fun wallpaperNote(wp: Wallpaper): String? = when {
 
 @Composable
 private fun WallpaperCard(wp: Wallpaper, focusRequester: FocusRequester?, onFocused: () -> Unit) {
-    val selected = Wallpapers.selectedId == wp.id
+    // While an input plays behind Home, that picture is the wallpaper: no other card is chosen.
+    val selected = Wallpapers.selectedId == wp.id && AerialSettings.liveTvSource == null
     val thumb by produceState<ImageBitmap?>(null, wp.id, Wallpapers.items) {
         value = withContext(Dispatchers.Default) { Wallpapers.thumbnail(wp.id)?.asImageBitmap() }
     }
-    Pressable(onClick = { Wallpapers.select(wp.id) }, focusRequester = focusRequester, focusedScale = 1.08f) { state ->
+    Pressable(
+        onClick = {
+            // One backdrop at a time: picking a wallpaper takes the input's picture down.
+            if (AerialSettings.liveTvSource != null) AerialSettings.chooseLiveTvSource(null)
+            Wallpapers.select(wp.id)
+        },
+        focusRequester = focusRequester,
+        focusedScale = 1.08f,
+    ) { state ->
         LaunchedEffect(state.focused) { if (state.focused) onFocused() }
         Column(Modifier.width(168.dp)) {
             Box(

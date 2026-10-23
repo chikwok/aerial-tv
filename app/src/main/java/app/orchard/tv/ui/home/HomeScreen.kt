@@ -792,6 +792,8 @@ fun HomeScreen(
                 if (on) vm.overlay = Overlay.Pin(PinMode.Create) { vm.overlay = Overlay.Wallpaper }
                 else vm.whenUnlocked { AerialSettings.choosePin(null); vm.overlay = Overlay.Wallpaper }
             },
+            // The inputs, for the wallpaper that plays one behind Home.
+            sources = vm.sources,
         )
 
         val pin = overlay as? Overlay.Pin
